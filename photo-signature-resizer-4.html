@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>फोटो और हस्ताक्षर रिसाइज़र — बोर्ड अपलोड टूल</title>
+<style>
+  :root{
+    --ink:#12233d;
+    --paper:#f4f1e9;
+    --card:#ffffff;
+    --line:#12233d22;
+    --accent:#8a4b2b;
+    --ok:#1f6f4f;
+    --warn:#b23b2e;
+    --stamp:#12233d;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Georgia','Noto Sans Devanagari',serif;
+    background:
+      radial-gradient(circle at 20% 15%, #ffffff10, transparent 40%),
+      var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    padding:28px 16px 60px;
+  }
+  .wrap{max-width:920px;margin:0 auto;}
+
+  header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    border-bottom:3px double var(--ink);
+    padding-bottom:14px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  header .title-block{max-width:640px;}
+  .eyebrow{
+    font-family:'Courier New',monospace;
+    letter-spacing:.14em;
+    font-size:11px;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 6px;
+  }
+  h1{
+    font-size:26px;
+    margin:0 0 6px;
+    font-weight:700;
+    line-height:1.25;
+  }
+  header p{margin:0;font-size:13.5px;color:#3a4a63;}
+  .seal{
+    width:64px;height:64px;border-radius:50%;
+    border:2px solid var(--stamp);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Courier New',monospace;font-size:10px;
+    text-align:center;line-height:1.2;color:var(--stamp);
+    transform:rotate(-8deg);
+    flex-shrink:0;
+    background:repeating-conic-gradient(from 0deg, #12233d08 0deg 8deg, transparent 8deg 16deg);
+  }
+
+  .tabs{display:flex;gap:8px;margin-bottom:20px;}
+  .tab{
+    flex:1;
+    padding:12px 14px;
+    background:var(--card);
+    border:1px solid var(--line);
+    cursor:pointer;
+    text-align:center;
+    font-size:14.5px;
+    font-weight:600;
+    position:relative;
+    transition:.15s;
+  }
+  .tab .sub{display:block;font-size:11px;font-weight:400;color:#6b7688;margin-top:2px;}
+  .tab.active{
+    background:var(--ink);
+    color:#fff;
+  }
+  .tab.active .sub{color:#c9d3e4;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    padding:22px;
+    margin-bottom:18px;
+  }
+
+  .drop{
+    border:2px dashed #12233d55;
+    padding:32px 18px;
+    text-align:center;
+    cursor:pointer;
+    transition:.15s;
+  }
+  .drop:hover, .drop.drag{border-color:var(--accent);background:#8a4b2b0a;}
+  .drop p{margin:6px 0 0;font-size:13px;color:#5a6478;}
+  .drop .icon{font-size:30px;}
+  input[type=file]{display:none;}
+
+  .stage{
+    display:none;
+    gap:22px;
+    margin-top:6px;
+  }
+  .stage.show{display:grid;grid-template-columns:1fr;}
+  @media(min-width:680px){
+    .stage.show{grid-template-columns:1.2fr 1fr;}
+  }
+
+  .crop-area{
+    position:relative;
+    background:#20293a;
+    overflow:hidden;
+    touch-action:none;
+    user-select:none;
+    max-height:420px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .crop-area img{display:block;max-width:100%;max-height:420px;pointer-events:none;}
+  .crop-box{
+    position:absolute;
+    border:2px solid #f4f1e9;
+    box-shadow:0 0 0 2000px rgba(18,35,61,0.55);
+    cursor:move;
+  }
+  .crop-box .handle{
+    position:absolute;width:14px;height:14px;
+    background:var(--accent);
+    border:1px solid #fff;
+    border-radius:50%;
+  }
+  .handle.se{right:-8px;bottom:-8px;cursor:se-resize;}
+
+  .panel label{
+    display:block;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:#5a6478;
+    margin:14px 0 6px;
+  }
+  .panel label:first-child{margin-top:0;}
+  select, input[type=range]{width:100%;}
+  select{
+    padding:8px;font-size:14px;
+    border:1px solid var(--line);
+    background:#fff;font-family:inherit;
+  }
+
+  .stat-row{
+    display:flex;justify-content:space-between;
+    font-size:13px;padding:6px 0;
+    border-bottom:1px dotted var(--line);
+  }
+  .stat-row b{font-variant-numeric:tabular-nums;}
+  .badge{
+    display:inline-block;
+    padding:2px 8px;
+    font-size:11px;
+    font-weight:700;
+    border-radius:2px;
+  }
+  .badge.ok{background:#1f6f4f18;color:var(--ok);}
+  .badge.warn{background:#b23b2e18;color:var(--warn);}
+
+  .btnrow{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  button{
+    font-family:inherit;
+    font-size:13.5px;
+    font-weight:700;
+    padding:11px 18px;
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:#fff;
+    cursor:pointer;
+    letter-spacing:.02em;
+  }
+  button.ghost{background:transparent;color:var(--ink);}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  button:hover:not(:disabled){background:var(--accent);border-color:var(--accent);}
+  button.ghost:hover:not(:disabled){background:#12233d0c;}
+
+  .preview-final{
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px dashed var(--line);
+    display:none;
+  }
+  .preview-final.show{display:block;}
+  .preview-final img{
+    max-width:140px;
+    border:1px solid var(--line);
+    display:block;
+    margin-bottom:10px;
+  }
+
+  .or-row{
+    display:flex;align-items:center;gap:10px;
+    margin:14px 0;
+    color:#8a94a6;font-size:12px;
+  }
+  .or-row .line{flex:1;height:1px;background:var(--line);}
+
+  .camera-btn{
+    width:100%;
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--ink);
+  }
+  .camera-btn:hover{background:#12233d0c;border-color:var(--ink);}
+
+  .modal-backdrop{
+    display:none;
+    position:fixed;inset:0;
+    background:rgba(18,35,61,0.72);
+    z-index:1000;
+    align-items:center;justify-content:center;
+    padding:16px;
+  }
+  .modal-backdrop.show{display:flex;}
+  .cam-modal{
+    background:var(--card);
+    padding:18px;
+    max-width:480px;width:100%;
+    border:1px solid var(--line);
+  }
+  .cam-modal h3{margin:0 0 4px;font-size:16px;}
+  .cam-modal .hint{font-size:12px;color:#6b7688;margin:0 0 12px;}
+  .cam-stage{
+    position:relative;
+    background:#000;
+    overflow:hidden;
+    margin-bottom:14px;
+  }
+  .cam-stage video, .cam-stage canvas{width:100%;display:block;}
+  .cam-guide{
+    position:absolute;inset:0;
+    border:2px dashed #f4f1e9aa;
+    pointer-events:none;
+    margin:8%;
+  }
+  .cam-error{
+    font-size:12.5px;color:var(--warn);
+    background:#b23b2e12;
+    padding:10px;margin-bottom:12px;
+    display:none;
+  }
+  .cam-error.show{display:block;}
+
+  footer{
+    text-align:center;
+    font-size:11.5px;
+    color:#7a8496;
+    margin-top:30px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <p class="eyebrow">फॉर्म अपलोड सहायक</p>
+      <h1>फोटो और हस्ताक्षर को सही साइज़ में लाएँ</h1>
+      <p>बोर्ड की वेबसाइट पर अपलोड से पहले क्रॉप करें और तय सीमा से नीचे कंप्रेस करें — पूरी तरह आपके ब्राउज़र में, कोई फ़ाइल सर्वर पर नहीं जाती।</p>
+    </div>
+    <div class="seal">40KB<br>&<br>10KB<br>सीमा</div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="photo" onclick="switchTab('photo')">
+      फोटो
+      <span class="sub">लक्ष्य: 40 KB से नीचे</span>
+    </div>
+    <div class="tab" data-tab="sign" onclick="switchTab('sign')">
+      हस्ताक्षर
+      <span class="sub">लक्ष्य: 10 KB से नीचे</span>
+    </div>
+  </div>
+
+  <!-- PHOTO PANEL -->
+  <div class="card" id="panel-photo">
+    <div class="drop" id="drop-photo">
+      <div class="icon">📷</div>
+      <p><b>फोटो चुनने के लिए क्लिक करें</b> या यहाँ खींचकर छोड़ें</p>
+      <p>JPG / PNG चलेगा</p>
+    </div>
+    <div class="or-row"><div class="line"></div>या<div class="line"></div></div>
+    <button class="camera-btn" onclick="openCamera('photo')">📸 कैमरा से फोटो खींचें</button>
+    <input type="file" id="file-photo" accept="image/*">
+    <input type="file" id="capture-photo" accept="image/*" capture="environment">
+
+    <div class="stage" id="stage-photo">
+      <div>
+        <div class="crop-area" id="crop-area-photo">
+          <img id="img-photo">
+          <div class="crop-box" id="cropbox-photo">
+            <div class="handle se"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <label>क्रॉप अनुपात</label>
+        <select id="ratio-photo">
+          <option value="0.7778">पासपोर्ट साइज़ (3.5 × 4.5 सेमी)</option>
+          <option value="1">वर्गाकार (1:1)</option>
+          <option value="free">फ्री (मनचाहा)</option>
+        </select>
+
+        <label>अधिकतम साइज़ (KB)</label>
+        <input type="range" id="maxkb-photo" min="20" max="100" value="40">
+        <div class="stat-row"><span>चुनी गई सीमा</span><b id="maxkb-photo-val">40 KB</b></div>
+
+        <div class="btnrow">
+          <button onclick="processImage('photo')">क्रॉप करें और साइज़ घटाएँ</button>
+          <button class="ghost" onclick="resetPanel('photo')">रीसेट</button>
+        </div>
+
+        <div class="preview-final" id="result-photo">
+          <label>तैयार फोटो</label>
+          <img id="result-img-photo">
+          <div class="stat-row"><span>अंतिम साइज़</span><b id="result-size-photo">—</b></div>
+          <div class="stat-row"><span>माप (पिक्सेल)</span><b id="result-dim-photo">—</b></div>
+          <div class="btnrow">
+            <a id="download-photo" download="photo.jpg"><button>डाउनलोड करें</button></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGNATURE PANEL -->
+  <div class="card" id="panel-sign" style="display:none;">
+    <div class="drop" id="drop-sign">
+      <div class="icon">✍️</div>
+      <p><b>हस्ताक्षर की फोटो/स्कैन चुनें</b> या यहाँ खींचकर छोड़ें</p>
+      <p>सफेद कागज़ पर काली स्याही से किया हस्ताक्षर सबसे अच्छा नतीजा देगा</p>
+    </div>
+    <div class="or-row"><div class="line"></div>या<div class="line"></div></div>
+    <button class="camera-btn" onclick="openCamera('sign')">📸 कैमरा से खींचें</button>
+    <input type="file" id="file-sign" accept="image/*">
+    <input type="file" id="capture-sign" accept="image/*" capture="environment">
+
+    <div class="stage" id="stage-sign">
+      <div>
+        <div class="crop-area" id="crop-area-sign">
+          <img id="img-sign">
+          <div class="crop-box" id="cropbox-sign">
+            <div class="handle se"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <label>क्रॉप अनुपात</label>
+        <select id="ratio-sign">
+          <option value="2.3333">मानक हस्ताक्षर (3.5 × 1.5 सेमी)</option>
+          <option value="free" selected>फ्री (मनचाहा)</option>
+        </select>
+
+        <label>अधिकतम साइज़ (KB)</label>
+        <input type="range" id="maxkb-sign" min="2" max="10" value="10">
+        <div class="stat-row"><span>चुनी गई सीमा</span><b id="maxkb-sign-val">10 KB</b></div>
+
+        <div class="btnrow">
+          <button onclick="processImage('sign')">क्रॉप करें और साइज़ घटाएँ</button>
+          <button class="ghost" onclick="resetPanel('sign')">रीसेट</button>
+        </div>
+
+        <div class="preview-final" id="result-sign">
+          <label>तैयार हस्ताक्षर</label>
+          <img id="result-img-sign">
+          <div class="stat-row"><span>अंतिम साइज़</span><b id="result-size-sign">—</b></div>
+          <div class="stat-row"><span>माप (पिक्सेल)</span><b id="result-dim-sign">—</b></div>
+          <div class="btnrow">
+            <a id="download-sign" download="signature.jpg"><button>डाउनलोड करें</button></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>सब कुछ आपके डिवाइस पर ही होता है — कोई फोटो अपलोड या स्टोर नहीं होती।</footer>
+</div>
+
+<!-- CAMERA MODAL -->
+<div class="modal-backdrop" id="cam-backdrop">
+  <div class="cam-modal">
+    <h3 id="cam-title">कैमरा से फोटो खींचें</h3>
+    <p class="hint">कैमरे की अनुमति दें, फ्रेम में सही से आएँ, फिर नीचे बटन दबाएँ।</p>
+    <div class="cam-error" id="cam-error"></div>
+    <div class="cam-stage">
+      <video id="cam-video" autoplay playsinline muted></video>
+      <div class="cam-guide"></div>
+    </div>
+    <div class="btnrow">
+      <button onclick="capturePhoto()">फोटो खींचें</button>
+      <button class="ghost" onclick="switchCamera()">कैमरा बदलें</button>
+      <button class="ghost" onclick="closeCamera()">बंद करें</button>
+    </div>
+    <div class="btnrow" id="cam-fallback-row" style="display:none;">
+      <button onclick="useFallbackCamera()">📷 मोबाइल कैमरा सीधे खोलें</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  photo: { img:null, box:{x:20,y:20,w:150,h:190}, dragging:false, resizing:false, start:null, natW:0, natH:0, dispScale:1 },
+  sign:  { img:null, box:{x:20,y:20,w:200,h:85},  dragging:false, resizing:false, start:null, natW:0, natH:0, dispScale:1 }
+};
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active', el.dataset.tab===t));
+  document.getElementById('panel-photo').style.display = t==='photo' ? 'block':'none';
+  document.getElementById('panel-sign').style.display = t==='sign' ? 'block':'none';
+}
+
+// ---- file loading ----
+function setupDrop(kind){
+  const drop = document.getElementById('drop-'+kind);
+  const input = document.getElementById('file-'+kind);
+  drop.addEventListener('click', ()=>input.click());
+  drop.addEventListener('dragover', e=>{e.preventDefault();drop.classList.add('drag');});
+  drop.addEventListener('dragleave', ()=>drop.classList.remove('drag'));
+  drop.addEventListener('drop', e=>{
+    e.preventDefault();drop.classList.remove('drag');
+    if(e.dataTransfer.files[0]) loadFile(kind, e.dataTransfer.files[0]);
+  });
+  input.addEventListener('change', e=>{
+    if(e.target.files[0]) loadFile(kind, e.target.files[0]);
+  });
+}
+
+function loadFile(kind, file){
+  const reader = new FileReader();
+  reader.onload = ev=> loadImageFromDataUrl(kind, ev.target.result);
+  reader.readAsDataURL(file);
+}
+
+function loadImageFromDataUrl(kind, dataUrl){
+  const img = document.getElementById('img-'+kind);
+  img.onload = ()=>{
+    state[kind].natW = img.naturalWidth;
+    state[kind].natH = img.naturalHeight;
+    document.getElementById('stage-'+kind).classList.add('show');
+    document.getElementById('result-'+kind).classList.remove('show');
+    initCropBox(kind);
+  };
+  img.src = dataUrl;
+}
+
+// ---- camera capture ----
+let camKind = null;
+let camStream = null;
+let camFacing = 'user';
+
+async function startStream(facing){
+  const video = document.getElementById('cam-video');
+  const errBox = document.getElementById('cam-error');
+  const fallbackRow = document.getElementById('cam-fallback-row');
+  errBox.classList.remove('show');
+  fallbackRow.style.display = 'none';
+  if(camStream){
+    camStream.getTracks().forEach(t=>t.stop());
+    camStream = null;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    errBox.textContent = 'यह पेज लोकल फ़ाइल के रूप में खुला है, इसलिए ब्राउज़र में लाइव कैमरा नहीं चल सकता। नीचे दिए बटन से सीधे फोन का कैमरा ऐप खोलें।';
+    errBox.classList.add('show');
+    fallbackRow.style.display = 'flex';
+    return;
+  }
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facing },
+      audio: false
+    });
+    video.srcObject = camStream;
+    camFacing = facing;
+  }catch(err){
+    errBox.textContent = 'कैमरा नहीं खुल पाया। लोकल फ़ाइल के रूप में खोलने पर ब्राउज़र लाइव कैमरा ब्लॉक कर देता है। नीचे दिए बटन से सीधे फोन का कैमरा ऐप खोलें, या फ़ाइल अपलोड इस्तेमाल करें।';
+    errBox.classList.add('show');
+    fallbackRow.style.display = 'flex';
+  }
+}
+
+function useFallbackCamera(){
+  const input = document.getElementById('capture-'+camKind);
+  const kind = camKind;
+  input.value = '';
+  input.onchange = e=>{
+    if(e.target.files[0]) loadFile(kind, e.target.files[0]);
+  };
+  closeCamera();
+  input.click();
+}
+
+function openCamera(kind){
+  camKind = kind;
+  document.getElementById('cam-title').textContent =
+    kind==='sign' ? 'कैमरा से हस्ताक्षर खींचें' : 'कैमरा से फोटो खींचें';
+  document.getElementById('cam-backdrop').classList.add('show');
+  startStream(camFacing);
+}
+
+function switchCamera(){
+  startStream(camFacing === 'user' ? 'environment' : 'user');
+}
+
+function closeCamera(){
+  document.getElementById('cam-backdrop').classList.remove('show');
+  if(camStream){
+    camStream.getTracks().forEach(t=>t.stop());
+    camStream = null;
+  }
+  camKind = null;
+}
+
+function capturePhoto(){
+  const video = document.getElementById('cam-video');
+  if(!video.videoWidth){ return; }
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  if(camFacing === 'user'){
+    // mirror front camera so the capture matches what the user sees
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  loadImageFromDataUrl(camKind, dataUrl);
+  closeCamera();
+}
+
+// ---- crop box interaction ----
+function currentRatio(kind){
+  const val = document.getElementById('ratio-'+kind).value;
+  return val === 'free' ? null : parseFloat(val);
+}
+
+function initCropBox(kind){
+  const area = document.getElementById('crop-area-'+kind);
+  const img = document.getElementById('img-'+kind);
+  // wait a tick for layout
+  requestAnimationFrame(()=>{
+    const rect = img.getBoundingClientRect();
+    const areaRect = area.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    let ratio = currentRatio(kind);
+    let bw = w*0.6, bh = ratio ? bw/ratio : h*0.6;
+    if(bh > h*0.9){ bh = h*0.9; bw = ratio ? bh*ratio : bw; }
+    state[kind].box = { x:(w-bw)/2, y:(h-bh)/2, w:bw, h:bh };
+    renderBox(kind);
+  });
+}
+
+function renderBox(kind){
+  const box = state[kind].box;
+  const el = document.getElementById('cropbox-'+kind);
+  const img = document.getElementById('img-'+kind);
+  const imgRect = img.getBoundingClientRect();
+  const areaRect = img.parentElement.getBoundingClientRect();
+  const offsetX = imgRect.left - areaRect.left;
+  const offsetY = imgRect.top - areaRect.top;
+  el.style.left = (offsetX+box.x)+'px';
+  el.style.top = (offsetY+box.y)+'px';
+  el.style.width = box.w+'px';
+  el.style.height = box.h+'px';
+}
+
+function setupCropInteraction(kind){
+  const el = document.getElementById('cropbox-'+kind);
+  const img = document.getElementById('img-'+kind);
+  const handle = el.querySelector('.handle.se');
+
+  el.addEventListener('pointerdown', e=>{
+    if(e.target === handle) return;
+    state[kind].dragging = true;
+    state[kind].start = {x:e.clientX, y:e.clientY, box:{...state[kind].box}};
+    el.setPointerCapture(e.pointerId);
+  });
+  handle.addEventListener('pointerdown', e=>{
+    e.stopPropagation();
+    state[kind].resizing = true;
+    state[kind].start = {x:e.clientX, y:e.clientY, box:{...state[kind].box}};
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', e=>{
+    const s = state[kind];
+    const rect = img.getBoundingClientRect();
+    if(s.dragging && s.start){
+      const dx = e.clientX - s.start.x, dy = e.clientY - s.start.y;
+      let nx = s.start.box.x + dx, ny = s.start.box.y + dy;
+      nx = Math.max(0, Math.min(nx, rect.width - s.box.w));
+      ny = Math.max(0, Math.min(ny, rect.height - s.box.h));
+      s.box.x = nx; s.box.y = ny;
+      renderBox(kind);
+    } else if(s.resizing && s.start){
+      const dx = e.clientX - s.start.x;
+      let ratio = currentRatio(kind);
+      let nw = Math.max(30, s.start.box.w + dx);
+      nw = Math.min(nw, rect.width - s.box.x);
+      let nh = ratio ? nw/ratio : Math.max(30, s.start.box.h + (e.clientY-s.start.y));
+      nh = Math.min(nh, rect.height - s.box.y);
+      if(ratio) nw = nh*ratio;
+      s.box.w = nw; s.box.h = nh;
+      renderBox(kind);
+    }
+  });
+  window.addEventListener('pointerup', ()=>{
+    state[kind].dragging = false;
+    state[kind].resizing = false;
+    state[kind].start = null;
+  });
+
+  document.getElementById('ratio-'+kind).addEventListener('change', ()=>{
+    const ratio = currentRatio(kind);
+    if(ratio){
+      const s = state[kind];
+      s.box.h = s.box.w/ratio;
+      renderBox(kind);
+    }
+  });
+}
+
+// ---- process: crop + compress to target KB ----
+function processImage(kind){
+  const img = document.getElementById('img-'+kind);
+  const rect = img.getBoundingClientRect();
+  const scaleX = state[kind].natW / rect.width;
+  const scaleY = state[kind].natH / rect.height;
+  const box = state[kind].box;
+
+  const sx = box.x*scaleX, sy = box.y*scaleY, sw = box.w*scaleX, sh = box.h*scaleY;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = sw; canvas.height = sh;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+  const maxKB = parseInt(document.getElementById('maxkb-'+kind).value, 10);
+  compressToTarget(canvas, maxKB*1024, (dataUrl, sizeBytes, w, h)=>{
+    const resEl = document.getElementById('result-'+kind);
+    resEl.classList.add('show');
+    document.getElementById('result-img-'+kind).src = dataUrl;
+    const kb = (sizeBytes/1024).toFixed(1);
+    const sizeStat = document.getElementById('result-size-'+kind);
+    sizeStat.innerHTML = kb+' KB <span class="badge '+(sizeBytes<=maxKB*1024?'ok':'warn')+'">'+(sizeBytes<=maxKB*1024?'सीमा में':'बड़ी है')+'</span>';
+    document.getElementById('result-dim-'+kind).textContent = w+' × '+h+' px';
+    const a = document.getElementById('download-'+kind);
+    a.href = dataUrl;
+  });
+}
+
+function compressToTarget(canvas, targetBytes, callback){
+  let quality = 0.92;
+  let w = canvas.width, h = canvas.height;
+  let workCanvas = canvas;
+
+  function attempt(){
+    const dataUrl = workCanvas.toDataURL('image/jpeg', quality);
+    const bytes = Math.round((dataUrl.length - 'data:image/jpeg;base64,'.length) * 3/4);
+    return {dataUrl, bytes};
+  }
+
+  let result = attempt();
+  let tries = 0;
+  // step 1: reduce quality
+  while(result.bytes > targetBytes && quality > 0.35 && tries < 15){
+    quality -= 0.07;
+    result = attempt();
+    tries++;
+  }
+  // step 2: if still too big, scale down dimensions and retry
+  tries = 0;
+  while(result.bytes > targetBytes && tries < 12 && w > 60 && h > 60){
+    w = Math.round(w*0.88);
+    h = Math.round(h*0.88);
+    const c2 = document.createElement('canvas');
+    c2.width = w; c2.height = h;
+    c2.getContext('2d').drawImage(canvas, 0, 0, w, h);
+    workCanvas = c2;
+    quality = 0.85;
+    result = attempt();
+    let innerTries = 0;
+    while(result.bytes > targetBytes && quality > 0.35 && innerTries < 10){
+      quality -= 0.07;
+      result = attempt();
+      innerTries++;
+    }
+    tries++;
+  }
+
+  callback(result.dataUrl, result.bytes, w, h);
+}
+
+function resetPanel(kind){
+  document.getElementById('stage-'+kind).classList.remove('show');
+  document.getElementById('result-'+kind).classList.remove('show');
+  document.getElementById('file-'+kind).value = '';
+}
+
+// slider labels
+['photo','sign'].forEach(kind=>{
+  const slider = document.getElementById('maxkb-'+kind);
+  const label = document.getElementById('maxkb-'+kind+'-val');
+  slider.addEventListener('input', ()=> label.textContent = slider.value+' KB');
+  setupDrop(kind);
+  setupCropInteraction(kind);
+  window.addEventListener('resize', ()=> renderBox(kind));
+});
+</script>
+</body>
+</html>
